@@ -139,19 +139,29 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turborepo-ios-
 
+      - name: Use appropriate Xcode version
+        uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+
+      - name: Resolve iOS simulator runtime
+        run: |
+          IOS_SIMULATOR_OS=$(xcrun simctl list runtimes iOS | awk -F'[()]' '/iOS/{print $2}' | sort -V | tail -n1)
+
+          if [[ -z "$IOS_SIMULATOR_OS" ]]; then
+            echo "No iOS simulator runtimes found." >&2
+            exit 1
+          fi
+
+          echo "IOS_SIMULATOR_OS=$IOS_SIMULATOR_OS" >> $GITHUB_ENV
+
       - name: Check turborepo cache for iOS
         run: |
-          TURBO_CACHE_STATUS=$(node -p "($(yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}" --dry=json)).tasks.find(t => t.task === 'build:ios').cache.status")
+          TURBO_CACHE_STATUS=$(node -p "($(yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}" --dry=json -- --destination OS=$IOS_SIMULATOR_OS)).tasks.find(t => t.task === 'build:ios').cache.status")
 
           if [[ $TURBO_CACHE_STATUS == "HIT" ]]; then
             echo "turbo_cache_hit=1" >> $GITHUB_ENV
           fi
-
-      - name: Use appropriate Xcode version
-        if: env.turbo_cache_hit != 1
-        uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
-        with:
-          xcode-version: ${{ env.XCODE_VERSION }}
 
       - name: Install cocoapods
         if: env.turbo_cache_hit != 1 && steps.cocoapods-cache.outputs.cache-hit != 'true'
@@ -163,4 +173,4 @@ jobs:
 
       - name: Build example for iOS
         run: |
-          yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}"
+          yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}" -- --destination OS=$IOS_SIMULATOR_OS
