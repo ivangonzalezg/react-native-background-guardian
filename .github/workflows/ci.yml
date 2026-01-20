@@ -144,17 +144,6 @@ jobs:
         with:
           xcode-version: ${{ env.XCODE_VERSION }}
 
-      - name: Resolve iOS simulator runtime
-        run: |
-          IOS_SIMULATOR_OS=$(xcrun simctl list runtimes iOS | grep -oE 'iOS [0-9]+\.[0-9]+' | awk '{print $2}' | sort -V | tail -n1)
-
-          if [[ -z "$IOS_SIMULATOR_OS" ]]; then
-            echo "No iOS simulator runtimes found." >&2
-            exit 1
-          fi
-
-          echo "IOS_SIMULATOR_OS=$IOS_SIMULATOR_OS" >> $GITHUB_ENV
-
       - name: Check turborepo cache for iOS
         run: |
           TURBO_CACHE_STATUS=$(node -p "($(yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}" --dry=json)).tasks.find(t => t.task === 'build:ios').cache.status")
@@ -173,4 +162,4 @@ jobs:
 
       - name: Build example for iOS
         run: |
-          cd example && yarn build:ios --extra-params "-destination 'generic/platform=iOS Simulator,OS=$IOS_SIMULATOR_OS'"
+          yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}"
