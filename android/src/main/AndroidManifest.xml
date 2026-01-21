@@ -1,2 +1,4 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required for Wake Lock functionality to keep CPU running in background -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 </manifest>
