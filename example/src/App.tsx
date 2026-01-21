@@ -1,12 +1,89 @@
-import { Text, View, StyleSheet } from 'react-native';
-import { multiply } from 'react-native-background-guardian';
-
-const result = multiply(3, 7);
+import { useEffect, useState } from 'react';
+import { Text, View, StyleSheet, Button, Platform } from 'react-native';
+import BackgroundGuardian from 'react-native-background-guardian';
 
 export default function App() {
+  const [manufacturer, setManufacturer] = useState<string | null>(null);
+  const [isIgnoring, setIsIgnoring] = useState<boolean | null>(null);
+  const [wakeLockHeld, setWakeLockHeld] = useState(false);
+
+  useEffect(() => {
+    const init = async () => {
+      const mfr = await BackgroundGuardian.getDeviceManufacturer();
+      setManufacturer(mfr);
+
+      const ignoring =
+        await BackgroundGuardian.isIgnoringBatteryOptimizations();
+      setIsIgnoring(ignoring);
+    };
+    init();
+  }, []);
+
+  const handleAcquireWakeLock = async () => {
+    const result = await BackgroundGuardian.acquireWakeLock('ExampleApp');
+    setWakeLockHeld(result);
+  };
+
+  const handleReleaseWakeLock = async () => {
+    const result = await BackgroundGuardian.releaseWakeLock();
+    if (result) {
+      setWakeLockHeld(false);
+    }
+  };
+
+  const handleRequestExemption = async () => {
+    await BackgroundGuardian.requestBatteryOptimizationExemption();
+    const ignoring = await BackgroundGuardian.isIgnoringBatteryOptimizations();
+    setIsIgnoring(ignoring);
+  };
+
+  const handleOpenOEMSettings = async () => {
+    await BackgroundGuardian.openOEMSettings();
+  };
+
   return (
     <View style={styles.container}>
-      <Text>Result: {result}</Text>
+      <Text style={styles.title}>BackgroundGuardian</Text>
+
+      <View style={styles.infoContainer}>
+        <Text style={styles.label}>Platform:</Text>
+        <Text style={styles.value}>{Platform.OS}</Text>
+      </View>
+
+      <View style={styles.infoContainer}>
+        <Text style={styles.label}>Manufacturer:</Text>
+        <Text style={styles.value}>{manufacturer ?? 'Loading...'}</Text>
+      </View>
+
+      <View style={styles.infoContainer}>
+        <Text style={styles.label}>Ignoring Battery Opt:</Text>
+        <Text style={styles.value}>
+          {isIgnoring === null ? 'Loading...' : isIgnoring ? 'Yes' : 'No'}
+        </Text>
+      </View>
+
+      <View style={styles.infoContainer}>
+        <Text style={styles.label}>Wake Lock Held:</Text>
+        <Text style={styles.value}>{wakeLockHeld ? 'Yes' : 'No'}</Text>
+      </View>
+
+      <View style={styles.buttonContainer}>
+        <Button
+          title={wakeLockHeld ? 'Release Wake Lock' : 'Acquire Wake Lock'}
+          onPress={wakeLockHeld ? handleReleaseWakeLock : handleAcquireWakeLock}
+        />
+      </View>
+
+      <View style={styles.buttonContainer}>
+        <Button
+          title="Request Battery Exemption"
+          onPress={handleRequestExemption}
+        />
+      </View>
+
+      <View style={styles.buttonContainer}>
+        <Button title="Open OEM Settings" onPress={handleOpenOEMSettings} />
+      </View>
     </View>
   );
 }
@@ -16,5 +93,26 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 30,
+  },
+  infoContainer: {
+    flexDirection: 'row',
+    marginVertical: 5,
+  },
+  label: {
+    fontWeight: '600',
+    marginRight: 8,
+  },
+  value: {
+    color: '#666',
+  },
+  buttonContainer: {
+    marginVertical: 8,
+    width: '100%',
   },
 });
