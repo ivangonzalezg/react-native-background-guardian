@@ -19,49 +19,58 @@ export default function App() {
     setIsIgnoring(ignoring);
   }, []);
 
-  useEffect(() => {
-    const init = async () => {
-      const mfr = await BackgroundGuardian.getDeviceManufacturer();
-      setManufacturer(mfr);
-      await refreshBatteryStatus();
-    };
-    init();
+  const init = useCallback(async () => {
+    const mfr = await BackgroundGuardian.getDeviceManufacturer();
+    setManufacturer(mfr);
+    await refreshBatteryStatus();
   }, [refreshBatteryStatus]);
+
+  useEffect(() => {
+    init();
+  }, [init]);
+
+  const handleAppStateChange = useCallback(
+    (nextAppState: string) => {
+      if (nextAppState === 'active') {
+        refreshBatteryStatus();
+      }
+    },
+    [refreshBatteryStatus]
+  );
 
   // Refresh battery status when app comes back to foreground
   // This handles the case where user accepts/rejects the battery optimization dialog
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') {
-        refreshBatteryStatus();
-      }
-    });
+    const subscription = AppState.addEventListener(
+      'change',
+      handleAppStateChange
+    );
 
     return () => {
       subscription.remove();
     };
-  }, [refreshBatteryStatus]);
+  }, [handleAppStateChange]);
 
-  const handleAcquireWakeLock = async () => {
+  const handleAcquireWakeLock = useCallback(async () => {
     const result = await BackgroundGuardian.acquireWakeLock('ExampleApp');
     setWakeLockHeld(result);
-  };
+  }, []);
 
-  const handleReleaseWakeLock = async () => {
+  const handleReleaseWakeLock = useCallback(async () => {
     const result = await BackgroundGuardian.releaseWakeLock();
     if (result) {
       setWakeLockHeld(false);
     }
-  };
+  }, []);
 
-  const handleRequestExemption = async () => {
+  const handleRequestExemption = useCallback(async () => {
     await BackgroundGuardian.requestBatteryOptimizationExemption();
     await refreshBatteryStatus();
-  };
+  }, [refreshBatteryStatus]);
 
-  const handleOpenOEMSettings = async () => {
+  const handleOpenOEMSettings = useCallback(async () => {
     await BackgroundGuardian.openOEMSettings();
-  };
+  }, []);
 
   return (
     <View style={styles.container}>
