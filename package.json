@@ -1,6 +1,6 @@
 {
   "name": "react-native-background-guardian",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A cross-platform React Native library that prevents Android from killing background processes through Wake Locks, battery optimization exemptions, and OEM-specific protections. iOS-safe with no-op implementation.",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
