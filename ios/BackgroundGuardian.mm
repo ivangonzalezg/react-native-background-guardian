@@ -1,11 +1,22 @@
 #import "BackgroundGuardian.h"
 
+/**
+ * BackgroundGuardian iOS Implementation
+ *
+ * This is a no-op (no operation) implementation for iOS. All methods return safe
+ * default values immediately without performing any actual operations.
+ *
+ * Why no-op?
+ * - iOS handles background execution differently through Background Modes, not wake locks
+ * - iOS doesn't have user-configurable battery optimization settings like Android
+ * - iOS doesn't have OEM-specific battery management (Apple controls the entire stack)
+ *
+ * This approach allows developers to use the same API on both platforms without
+ * platform-specific conditionals in their JavaScript code.
+ */
 @implementation BackgroundGuardian
-- (NSNumber *)multiply:(double)a b:(double)b {
-    NSNumber *result = @(a * b);
 
-    return result;
-}
+#pragma mark - TurboModule Setup
 
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
     (const facebook::react::ObjCTurboModule::InitParams &)params
@@ -15,7 +26,122 @@
 
 + (NSString *)moduleName
 {
-  return @"BackgroundGuardian";
+    return @"BackgroundGuardian";
+}
+
+#pragma mark - Wake Lock Methods
+
+/**
+ * Acquires a wake lock (no-op on iOS).
+ *
+ * On iOS, there's no direct equivalent to Android's wake locks. iOS manages
+ * background execution through Background Modes (audio, location, VoIP, etc.)
+ * which are configured in Info.plist, not acquired programmatically.
+ *
+ * @param tag Identifier for the wake lock (ignored on iOS)
+ * @param resolve Promise resolver - always resolves with true
+ * @param reject Promise rejecter - never called
+ */
+- (void)acquireWakeLock:(NSString *)tag
+                resolve:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject
+{
+    // No-op: iOS doesn't support wake locks in the Android sense.
+    // Background execution is handled via Background Modes in Info.plist.
+    resolve(@(YES));
+}
+
+/**
+ * Releases a wake lock (no-op on iOS).
+ *
+ * Since we don't acquire wake locks on iOS, releasing is also a no-op.
+ *
+ * @param resolve Promise resolver - always resolves with true
+ * @param reject Promise rejecter - never called
+ */
+- (void)releaseWakeLock:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject
+{
+    // No-op: Nothing to release on iOS.
+    resolve(@(YES));
+}
+
+#pragma mark - Battery Optimization Methods
+
+/**
+ * Checks if the app is ignoring battery optimizations (no-op on iOS).
+ *
+ * iOS doesn't have the same battery optimization exemption system as Android.
+ * Apps either have background capabilities configured in Info.plist or they don't.
+ * We return true to indicate the app can proceed with background work.
+ *
+ * @param resolve Promise resolver - always resolves with true
+ * @param reject Promise rejecter - never called
+ */
+- (void)isIgnoringBatteryOptimizations:(RCTPromiseResolveBlock)resolve
+                                reject:(RCTPromiseRejectBlock)reject
+{
+    // No-op: iOS doesn't have Android-style battery optimization settings.
+    // Return true to indicate no restrictions from this API's perspective.
+    resolve(@(YES));
+}
+
+/**
+ * Requests battery optimization exemption (no-op on iOS).
+ *
+ * iOS doesn't have a system dialog for battery optimization exemption.
+ * Background capabilities are declared in Info.plist and reviewed by Apple.
+ * We return true to indicate the "request" was successful (nothing to request).
+ *
+ * @param resolve Promise resolver - always resolves with true
+ * @param reject Promise rejecter - never called
+ */
+- (void)requestBatteryOptimizationExemption:(RCTPromiseResolveBlock)resolve
+                                     reject:(RCTPromiseRejectBlock)reject
+{
+    // No-op: iOS doesn't have a battery optimization exemption dialog.
+    // Background capabilities are configured via Info.plist.
+    resolve(@(YES));
+}
+
+#pragma mark - OEM Settings Methods
+
+/**
+ * Opens OEM-specific battery settings (no-op on iOS).
+ *
+ * Unlike Android where different manufacturers (Xiaomi, Samsung, etc.) have
+ * custom battery optimization settings, iOS has no OEM variations - Apple
+ * controls the entire hardware and software stack.
+ *
+ * Returns false to indicate no OEM settings are available.
+ *
+ * @param resolve Promise resolver - always resolves with false
+ * @param reject Promise rejecter - never called
+ */
+- (void)openOEMSettings:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject
+{
+    // No-op: iOS has no OEM-specific settings (Apple is the only "OEM").
+    // Return false to indicate no settings were opened.
+    resolve(@(NO));
+}
+
+#pragma mark - Device Info Methods
+
+/**
+ * Gets the device manufacturer.
+ *
+ * On iOS, the manufacturer is always Apple. This is useful for cross-platform
+ * code that needs to identify the device manufacturer.
+ *
+ * @param resolve Promise resolver - always resolves with "Apple"
+ * @param reject Promise rejecter - never called
+ */
+- (void)getDeviceManufacturer:(RCTPromiseResolveBlock)resolve
+                       reject:(RCTPromiseRejectBlock)reject
+{
+    // iOS devices are exclusively manufactured by Apple.
+    resolve(@"Apple");
 }
 
 @end
