@@ -1,5 +1,7 @@
 package com.backgroundguardian
 
+import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -237,18 +239,310 @@ class BackgroundGuardianModule(reactContext: ReactApplicationContext) :
     }
 
     // ==================== OEM Settings Methods ====================
-    // TODO: Implement in next task
 
+    /**
+     * Map of OEM manufacturers to their battery/autostart settings activities.
+     *
+     * Many Android manufacturers implement aggressive battery optimization that kills
+     * apps even when standard Android battery optimizations are disabled. This map
+     * contains known activities for managing these OEM-specific settings.
+     *
+     * Note: These activities may change between OS versions and some may not exist
+     * on all device variants. The implementation tries each one and falls back gracefully.
+     */
+    private val oemSettingsIntents: Map<String, List<Intent>> by lazy {
+        mapOf(
+            // Xiaomi MIUI
+            "xiaomi" to listOf(
+                Intent().setComponent(ComponentName(
+                    "com.miui.securitycenter",
+                    "com.miui.permcenter.autostart.AutoStartManagementActivity"
+                )),
+                Intent().setComponent(ComponentName(
+                    "com.miui.securitycenter",
+                    "com.miui.powercenter.PowerSettings"
+                ))
+            ),
+
+            // Huawei EMUI
+            "huawei" to listOf(
+                Intent().setComponent(ComponentName(
+                    "com.huawei.systemmanager",
+                    "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"
+                )),
+                Intent().setComponent(ComponentName(
+                    "com.huawei.systemmanager",
+                    "com.huawei.systemmanager.optimize.process.ProtectActivity"
+                )),
+                Intent().setComponent(ComponentName(
+                    "com.huawei.systemmanager",
+                    "com.huawei.systemmanager.appcontrol.activity.StartupAppControlActivity"
+                ))
+            ),
+
+            // Honor (sub-brand of Huawei)
+            "honor" to listOf(
+                Intent().setComponent(ComponentName(
+                    "com.huawei.systemmanager",
+                    "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"
+                ))
+            ),
+
+            // Oppo ColorOS
+            "oppo" to listOf(
+                Intent().setComponent(ComponentName(
+                    "com.coloros.safecenter",
+                    "com.coloros.safecenter.startupapp.StartupAppListActivity"
+                )),
+                Intent().setComponent(ComponentName(
+                    "com.oppo.safe",
+                    "com.oppo.safe.permission.startup.StartupAppListActivity"
+                )),
+                Intent().setComponent(ComponentName(
+                    "com.coloros.oppoguardelf",
+                    "com.coloros.powermanager.fuelga498.PowerUsageModelActivity"
+                ))
+            ),
+
+            // Vivo FuntouchOS
+            "vivo" to listOf(
+                Intent().setComponent(ComponentName(
+                    "com.vivo.permissionmanager",
+                    "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"
+                )),
+                Intent().setComponent(ComponentName(
+                    "com.iqoo.secure",
+                    "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity"
+                )),
+                Intent().setComponent(ComponentName(
+                    "com.vivo.abe",
+                    "com.vivo.applicationbehaviorengine.ui.ExcessivePowerManagerActivity"
+                ))
+            ),
+
+            // Samsung OneUI
+            "samsung" to listOf(
+                Intent().setComponent(ComponentName(
+                    "com.samsung.android.lool",
+                    "com.samsung.android.sm.ui.battery.BatteryActivity"
+                )),
+                Intent().setComponent(ComponentName(
+                    "com.samsung.android.sm",
+                    "com.samsung.android.sm.ui.battery.BatteryActivity"
+                ))
+            ),
+
+            // OnePlus OxygenOS
+            "oneplus" to listOf(
+                Intent().setComponent(ComponentName(
+                    "com.oneplus.security",
+                    "com.oneplus.security.chainlaunch.view.ChainLaunchAppListActivity"
+                ))
+            ),
+
+            // Realme (based on ColorOS)
+            "realme" to listOf(
+                Intent().setComponent(ComponentName(
+                    "com.coloros.safecenter",
+                    "com.coloros.safecenter.startupapp.StartupAppListActivity"
+                )),
+                Intent().setComponent(ComponentName(
+                    "com.oppo.safe",
+                    "com.oppo.safe.permission.startup.StartupAppListActivity"
+                ))
+            ),
+
+            // Asus ZenUI
+            "asus" to listOf(
+                Intent().setComponent(ComponentName(
+                    "com.asus.mobilemanager",
+                    "com.asus.mobilemanager.autostart.AutoStartActivity"
+                )),
+                Intent().setComponent(ComponentName(
+                    "com.asus.mobilemanager",
+                    "com.asus.mobilemanager.entry.FunctionActivity"
+                ))
+            ),
+
+            // Lenovo
+            "lenovo" to listOf(
+                Intent().setComponent(ComponentName(
+                    "com.lenovo.security",
+                    "com.lenovo.security.purebackground.PureBackgroundActivity"
+                ))
+            ),
+
+            // Meizu Flyme
+            "meizu" to listOf(
+                Intent().setComponent(ComponentName(
+                    "com.meizu.safe",
+                    "com.meizu.safe.powerui.PowerAppPermissionActivity"
+                ))
+            ),
+
+            // Nokia (HMD Global)
+            "nokia" to listOf(
+                Intent().setComponent(ComponentName(
+                    "com.evenwell.powersaving.g3",
+                    "com.evenwell.powersaving.g3.exception.PowerSaverExceptionActivity"
+                ))
+            )
+        )
+    }
+
+    /**
+     * Opens OEM-specific battery/autostart settings if available for the current device.
+     *
+     * Many Android manufacturers (Xiaomi, Huawei, Oppo, Vivo, Samsung, etc.) implement
+     * aggressive battery optimization that can kill apps even when standard Android
+     * battery optimizations are disabled. This method attempts to open the manufacturer-
+     * specific settings page where users can whitelist the app.
+     *
+     * The method tries multiple known activities for each manufacturer as they may
+     * vary between OS versions. If no OEM-specific settings are found, it falls back
+     * to opening the generic app details settings page.
+     *
+     * @param promise Resolves to true if any settings page was opened successfully,
+     *                false if no settings could be opened
+     */
     override fun openOEMSettings(promise: Promise) {
-        // Placeholder - will be implemented in OEM settings task
-        promise.resolve(false)
+        try {
+            val manufacturer = Build.MANUFACTURER.lowercase()
+            Log.d(TAG, "Attempting to open OEM settings for manufacturer: $manufacturer")
+
+            // Try OEM-specific intents
+            val intents = oemSettingsIntents[manufacturer]
+            if (intents != null) {
+                for (intent in intents) {
+                    if (tryStartActivity(intent)) {
+                        Log.d(TAG, "Successfully opened OEM settings: ${intent.component}")
+                        promise.resolve(true)
+                        return
+                    }
+                }
+            }
+
+            // Fallback 1: Try to open battery optimization settings list (API 23+)
+            if (openBatteryOptimizationSettings()) {
+                Log.d(TAG, "Opened battery optimization settings as fallback")
+                promise.resolve(true)
+                return
+            }
+
+            // Fallback 2: Try to open generic app details settings
+            if (openAppDetailsSettings()) {
+                Log.d(TAG, "Opened generic app details settings as fallback")
+                promise.resolve(true)
+                return
+            }
+
+            Log.d(TAG, "No OEM settings available for manufacturer: $manufacturer")
+            promise.resolve(false)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to open OEM settings", e)
+            promise.resolve(false)
+        }
+    }
+
+    /**
+     * Attempts to start an activity safely.
+     *
+     * @param intent The intent to start
+     * @return true if the activity was started successfully, false otherwise
+     */
+    private fun tryStartActivity(intent: Intent): Boolean {
+        return try {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            reactApplicationContext.startActivity(intent)
+            true
+        } catch (e: ActivityNotFoundException) {
+            Log.d(TAG, "Activity not found: ${intent.component}")
+            false
+        } catch (e: SecurityException) {
+            Log.d(TAG, "Security exception for: ${intent.component}")
+            false
+        } catch (e: Exception) {
+            Log.d(TAG, "Failed to start activity: ${intent.component}", e)
+            false
+        }
+    }
+
+    /**
+     * Opens the battery optimization settings list.
+     *
+     * This shows the list of all apps with their battery optimization status,
+     * where the user can manually enable/disable optimization for any app.
+     * Available on Android 6.0 (API 23) and above.
+     *
+     * @return true if the settings page was opened successfully, false otherwise
+     */
+    private fun openBatteryOptimizationSettings(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return false
+        }
+
+        return try {
+            val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            reactApplicationContext.startActivity(intent)
+            true
+        } catch (e: Exception) {
+            Log.d(TAG, "Failed to open battery optimization settings", e)
+            false
+        }
+    }
+
+    /**
+     * Opens the generic app details settings page as a fallback.
+     *
+     * @return true if the settings page was opened successfully, false otherwise
+     */
+    private fun openAppDetailsSettings(): Boolean {
+        return try {
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:${reactApplicationContext.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            reactApplicationContext.startActivity(intent)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to open app details settings", e)
+            false
+        }
     }
 
     // ==================== Device Info Methods ====================
-    // TODO: Implement in next task
 
+    /**
+     * Gets the device manufacturer name.
+     *
+     * Returns the value of Build.MANUFACTURER, which identifies the device manufacturer
+     * (e.g., "Samsung", "Xiaomi", "Google", "OnePlus"). This can be useful for:
+     * - Determining whether OEM-specific settings might be available
+     * - Showing manufacturer-specific instructions to users
+     * - Analytics and debugging purposes
+     *
+     * The manufacturer name is returned in lowercase for easier comparison.
+     *
+     * @param promise Resolves to the manufacturer name string (lowercase),
+     *                or null if it couldn't be determined
+     */
     override fun getDeviceManufacturer(promise: Promise) {
-        // Placeholder - will be implemented in device info task
-        promise.resolve(null)
+        try {
+            val manufacturer = Build.MANUFACTURER
+            if (manufacturer.isNullOrBlank()) {
+                Log.d(TAG, "Device manufacturer is null or blank")
+                promise.resolve(null)
+                return
+            }
+
+            val normalizedManufacturer = manufacturer.lowercase()
+            Log.d(TAG, "Device manufacturer: $normalizedManufacturer")
+            promise.resolve(normalizedManufacturer)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get device manufacturer", e)
+            promise.resolve(null)
+        }
     }
 }
