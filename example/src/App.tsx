@@ -1,5 +1,12 @@
-import { useEffect, useState } from 'react';
-import { Text, View, StyleSheet, Button, Platform } from 'react-native';
+import { useEffect, useState, useCallback } from 'react';
+import {
+  Text,
+  View,
+  StyleSheet,
+  Button,
+  Platform,
+  AppState,
+} from 'react-native';
 import BackgroundGuardian from 'react-native-background-guardian';
 
 export default function App() {
@@ -7,17 +14,33 @@ export default function App() {
   const [isIgnoring, setIsIgnoring] = useState<boolean | null>(null);
   const [wakeLockHeld, setWakeLockHeld] = useState(false);
 
+  const refreshBatteryStatus = useCallback(async () => {
+    const ignoring = await BackgroundGuardian.isIgnoringBatteryOptimizations();
+    setIsIgnoring(ignoring);
+  }, []);
+
   useEffect(() => {
     const init = async () => {
       const mfr = await BackgroundGuardian.getDeviceManufacturer();
       setManufacturer(mfr);
-
-      const ignoring =
-        await BackgroundGuardian.isIgnoringBatteryOptimizations();
-      setIsIgnoring(ignoring);
+      await refreshBatteryStatus();
     };
     init();
-  }, []);
+  }, [refreshBatteryStatus]);
+
+  // Refresh battery status when app comes back to foreground
+  // This handles the case where user accepts/rejects the battery optimization dialog
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        refreshBatteryStatus();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [refreshBatteryStatus]);
 
   const handleAcquireWakeLock = async () => {
     const result = await BackgroundGuardian.acquireWakeLock('ExampleApp');
@@ -33,8 +56,7 @@ export default function App() {
 
   const handleRequestExemption = async () => {
     await BackgroundGuardian.requestBatteryOptimizationExemption();
-    const ignoring = await BackgroundGuardian.isIgnoringBatteryOptimizations();
-    setIsIgnoring(ignoring);
+    await refreshBatteryStatus();
   };
 
   const handleOpenOEMSettings = async () => {
