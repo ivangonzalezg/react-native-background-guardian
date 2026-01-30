@@ -28,6 +28,15 @@ export interface Spec extends TurboModule {
   releaseWakeLock(): Promise<boolean>;
 
   /**
+   * Checks if a wake lock is currently held.
+   * On Android, returns whether a wake lock is actively held.
+   * On iOS, this is a no-op and returns false immediately.
+   *
+   * @returns Promise resolving to true if a wake lock is held, false otherwise
+   */
+  isWakeLockHeld(): Promise<boolean>;
+
+  /**
    * Checks if the app is currently ignoring battery optimizations.
    * On Android, checks if the app is whitelisted from Doze mode.
    * On iOS, this is a no-op and returns true immediately.
@@ -54,6 +63,28 @@ export interface Spec extends TurboModule {
    * @returns Promise resolving to true if settings were opened, false if not available
    */
   openOEMSettings(): Promise<boolean>;
+
+  /**
+   * Checks if the device is in Power Save (Battery Saver) mode.
+   * On Android, checks PowerManager.isPowerSaveMode().
+   * On iOS, this is a no-op and returns false immediately.
+   *
+   * Power Save mode is a system-wide setting that affects ALL apps, regardless
+   * of battery optimization exemptions. When active, it may throttle network,
+   * location updates, and background processing.
+   *
+   * @returns Promise resolving to true if power save mode is enabled, false otherwise
+   */
+  isPowerSaveMode(): Promise<boolean>;
+
+  /**
+   * Opens the system Power Save Mode settings.
+   * On Android, opens the Battery Saver settings page.
+   * On iOS, this is a no-op and returns false immediately.
+   *
+   * @returns Promise resolving to true if settings were opened, false otherwise
+   */
+  openPowerSaveModeSettings(): Promise<boolean>;
 
   /**
    * Gets the device manufacturer name.

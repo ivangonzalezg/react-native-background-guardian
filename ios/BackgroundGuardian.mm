@@ -66,6 +66,21 @@
     resolve(@(YES));
 }
 
+/**
+ * Checks if a wake lock is currently held (no-op on iOS).
+ *
+ * Since iOS doesn't support wake locks, we always return false.
+ *
+ * @param resolve Promise resolver - always resolves with false
+ * @param reject Promise rejecter - never called
+ */
+- (void)isWakeLockHeld:(RCTPromiseResolveBlock)resolve
+                reject:(RCTPromiseRejectBlock)reject
+{
+    // No-op: iOS doesn't have wake locks, so none can be held.
+    resolve(@(NO));
+}
+
 #pragma mark - Battery Optimization Methods
 
 /**
@@ -102,6 +117,43 @@
     // No-op: iOS doesn't have a battery optimization exemption dialog.
     // Background capabilities are configured via Info.plist.
     resolve(@(YES));
+}
+
+#pragma mark - Power Save Mode Methods
+
+/**
+ * Checks if power save mode is enabled (no-op on iOS).
+ *
+ * iOS has Low Power Mode, but checking it requires UIKit and has different
+ * semantics than Android's Power Save mode. For API consistency, we return
+ * false to indicate no system-wide power restrictions from this API's perspective.
+ *
+ * @param resolve Promise resolver - always resolves with false
+ * @param reject Promise rejecter - never called
+ */
+- (void)isPowerSaveMode:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject
+{
+    // No-op: iOS Low Power Mode has different semantics and checking it
+    // requires UIKit. Return false for API consistency.
+    resolve(@(NO));
+}
+
+/**
+ * Opens power save mode settings (no-op on iOS).
+ *
+ * iOS doesn't allow opening specific Settings pages programmatically
+ * beyond the app's own settings. Return false to indicate settings
+ * could not be opened.
+ *
+ * @param resolve Promise resolver - always resolves with false
+ * @param reject Promise rejecter - never called
+ */
+- (void)openPowerSaveModeSettings:(RCTPromiseResolveBlock)resolve
+                           reject:(RCTPromiseRejectBlock)reject
+{
+    // No-op: iOS doesn't allow opening specific system settings pages.
+    resolve(@(NO));
 }
 
 #pragma mark - OEM Settings Methods

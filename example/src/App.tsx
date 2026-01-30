@@ -13,17 +13,30 @@ export default function App() {
   const [manufacturer, setManufacturer] = useState<string | null>(null);
   const [isIgnoring, setIsIgnoring] = useState<boolean | null>(null);
   const [wakeLockHeld, setWakeLockHeld] = useState(false);
+  const [isPowerSave, setIsPowerSave] = useState<boolean | null>(null);
+
+  const refreshWakeLockStatus = useCallback(async () => {
+    const isHeld = await BackgroundGuardian.isWakeLockHeld();
+    setWakeLockHeld(isHeld);
+  }, []);
 
   const refreshBatteryStatus = useCallback(async () => {
     const ignoring = await BackgroundGuardian.isIgnoringBatteryOptimizations();
     setIsIgnoring(ignoring);
   }, []);
 
+  const refreshPowerSaveStatus = useCallback(async () => {
+    const powerSave = await BackgroundGuardian.isPowerSaveMode();
+    setIsPowerSave(powerSave);
+  }, []);
+
   const init = useCallback(async () => {
     const mfr = await BackgroundGuardian.getDeviceManufacturer();
     setManufacturer(mfr);
     await refreshBatteryStatus();
-  }, [refreshBatteryStatus]);
+    await refreshPowerSaveStatus();
+    await refreshWakeLockStatus();
+  }, [refreshBatteryStatus, refreshPowerSaveStatus, refreshWakeLockStatus]);
 
   useEffect(() => {
     init();
@@ -33,9 +46,11 @@ export default function App() {
     (nextAppState: string) => {
       if (nextAppState === 'active') {
         refreshBatteryStatus();
+        refreshPowerSaveStatus();
+        refreshWakeLockStatus();
       }
     },
-    [refreshBatteryStatus]
+    [refreshBatteryStatus, refreshPowerSaveStatus, refreshWakeLockStatus]
   );
 
   // Refresh battery status when app comes back to foreground
@@ -52,16 +67,14 @@ export default function App() {
   }, [handleAppStateChange]);
 
   const handleAcquireWakeLock = useCallback(async () => {
-    const result = await BackgroundGuardian.acquireWakeLock('ExampleApp');
-    setWakeLockHeld(result);
-  }, []);
+    await BackgroundGuardian.acquireWakeLock('ExampleApp');
+    await refreshWakeLockStatus();
+  }, [refreshWakeLockStatus]);
 
   const handleReleaseWakeLock = useCallback(async () => {
-    const result = await BackgroundGuardian.releaseWakeLock();
-    if (result) {
-      setWakeLockHeld(false);
-    }
-  }, []);
+    await BackgroundGuardian.releaseWakeLock();
+    await refreshWakeLockStatus();
+  }, [refreshWakeLockStatus]);
 
   const handleRequestExemption = useCallback(async () => {
     await BackgroundGuardian.requestBatteryOptimizationExemption();
@@ -70,6 +83,10 @@ export default function App() {
 
   const handleOpenOEMSettings = useCallback(async () => {
     await BackgroundGuardian.openOEMSettings();
+  }, []);
+
+  const handleOpenPowerSaveSettings = useCallback(async () => {
+    await BackgroundGuardian.openPowerSaveModeSettings();
   }, []);
 
   return (
@@ -98,6 +115,13 @@ export default function App() {
         <Text style={styles.value}>{wakeLockHeld ? 'Yes' : 'No'}</Text>
       </View>
 
+      <View style={styles.infoContainer}>
+        <Text style={styles.label}>Power Save Mode:</Text>
+        <Text style={styles.value}>
+          {isPowerSave === null ? 'Loading...' : isPowerSave ? 'On' : 'Off'}
+        </Text>
+      </View>
+
       <View style={styles.buttonContainer}>
         <Button
           title={wakeLockHeld ? 'Release Wake Lock' : 'Acquire Wake Lock'}
@@ -114,6 +138,13 @@ export default function App() {
 
       <View style={styles.buttonContainer}>
         <Button title="Open OEM Settings" onPress={handleOpenOEMSettings} />
+      </View>
+
+      <View style={styles.buttonContainer}>
+        <Button
+          title="Open Power Save Settings"
+          onPress={handleOpenPowerSaveSettings}
+        />
       </View>
     </View>
   );

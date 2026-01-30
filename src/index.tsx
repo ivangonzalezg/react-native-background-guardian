@@ -43,6 +43,12 @@ export interface BackgroundGuardianInterface {
   releaseWakeLock: () => Promise<boolean>;
 
   /**
+   * Checks if a wake lock is currently held.
+   * @returns Promise resolving to true if a wake lock is held
+   */
+  isWakeLockHeld: () => Promise<boolean>;
+
+  /**
    * Checks if the app is ignoring battery optimizations.
    * @returns Promise resolving to true if ignoring optimizations
    */
@@ -59,6 +65,18 @@ export interface BackgroundGuardianInterface {
    * @returns Promise resolving to true if settings were opened
    */
   openOEMSettings: () => Promise<boolean>;
+
+  /**
+   * Checks if the device is in Power Save (Battery Saver) mode.
+   * @returns Promise resolving to true if power save mode is enabled
+   */
+  isPowerSaveMode: () => Promise<boolean>;
+
+  /**
+   * Opens the system Power Save Mode settings.
+   * @returns Promise resolving to true if settings were opened
+   */
+  openPowerSaveModeSettings: () => Promise<boolean>;
 
   /**
    * Gets the device manufacturer name.
@@ -129,6 +147,32 @@ export function releaseWakeLock(): Promise<boolean> {
 }
 
 /**
+ * Checks if a wake lock is currently held.
+ *
+ * On Android, this returns whether a wake lock is actively held by this module.
+ * Useful for debugging or updating UI state based on wake lock status.
+ *
+ * On iOS, this always returns `false` as wake locks don't exist.
+ *
+ * @returns Promise resolving to `true` if a wake lock is currently held,
+ *          `false` otherwise.
+ *
+ * @example
+ * ```typescript
+ * const isHeld = await isWakeLockHeld();
+ * if (!isHeld) {
+ *   await acquireWakeLock('MyTask');
+ * }
+ * ```
+ *
+ * @see acquireWakeLock
+ * @see releaseWakeLock
+ */
+export function isWakeLockHeld(): Promise<boolean> {
+  return NativeBackgroundGuardian.isWakeLockHeld();
+}
+
+/**
  * Checks if the app is currently exempt from battery optimizations.
  *
  * On Android, this checks if the app is whitelisted from Doze mode and
@@ -187,6 +231,72 @@ export function isIgnoringBatteryOptimizations(): Promise<boolean> {
  */
 export function requestBatteryOptimizationExemption(): Promise<boolean> {
   return NativeBackgroundGuardian.requestBatteryOptimizationExemption();
+}
+
+/**
+ * Checks if the device is in Power Save (Battery Saver) mode.
+ *
+ * On Android, this checks `PowerManager.isPowerSaveMode()`. Power Save mode is
+ * a system-wide setting that affects ALL apps, regardless of battery optimization
+ * exemptions. When active, the system may:
+ * - Throttle network requests
+ * - Reduce location update frequency
+ * - Defer background jobs
+ * - Limit sync adapters
+ *
+ * Note: This is different from `isIgnoringBatteryOptimizations()`. An app can be
+ * exempt from Doze mode restrictions but still be affected by Power Save mode.
+ *
+ * On iOS, this always returns `false`.
+ *
+ * @returns Promise resolving to `true` if power save mode is enabled,
+ *          `false` otherwise.
+ *
+ * @example
+ * ```typescript
+ * const isPowerSave = await isPowerSaveMode();
+ * if (isPowerSave) {
+ *   Alert.alert(
+ *     'Battery Saver Active',
+ *     'Background features may be limited. Disable Battery Saver for best experience.',
+ *     [{ text: 'Open Settings', onPress: () => openPowerSaveModeSettings() }]
+ *   );
+ * }
+ * ```
+ *
+ * @see openPowerSaveModeSettings
+ * @see isIgnoringBatteryOptimizations
+ */
+export function isPowerSaveMode(): Promise<boolean> {
+  return NativeBackgroundGuardian.isPowerSaveMode();
+}
+
+/**
+ * Opens the system Power Save Mode (Battery Saver) settings.
+ *
+ * On Android, this opens the Battery Saver settings page where users can
+ * enable/disable Battery Saver mode and configure automatic activation.
+ *
+ * On iOS, this is a no-op that returns `false` immediately.
+ *
+ * @returns Promise resolving to `true` if settings were successfully opened,
+ *          `false` if the settings couldn't be opened.
+ *
+ * @example
+ * ```typescript
+ * const isPowerSave = await isPowerSaveMode();
+ * if (isPowerSave) {
+ *   const opened = await openPowerSaveModeSettings();
+ *   if (opened) {
+ *     console.log('Battery Saver settings opened');
+ *   }
+ * }
+ * ```
+ *
+ * @see isPowerSaveMode
+ */
+export function openPowerSaveModeSettings(): Promise<boolean> {
+  return NativeBackgroundGuardian.openPowerSaveModeSettings();
 }
 
 /**
@@ -276,8 +386,11 @@ export function getDeviceManufacturer(): Promise<string | null> {
 const BackgroundGuardian: BackgroundGuardianInterface = {
   acquireWakeLock,
   releaseWakeLock,
+  isWakeLockHeld,
   isIgnoringBatteryOptimizations,
   requestBatteryOptimizationExemption,
+  isPowerSaveMode,
+  openPowerSaveModeSettings,
   openOEMSettings,
   getDeviceManufacturer,
 };

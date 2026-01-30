@@ -10,6 +10,7 @@ A cross-platform React Native library that prevents Android from killing backgro
 
 - **Wake Lock Management** - Keep CPU running during background tasks
 - **Battery Optimization Exemption** - Request Doze mode whitelist
+- **Power Save Mode Detection** - Detect and manage Battery Saver mode
 - **OEM-Specific Settings** - Navigate to manufacturer battery settings (Xiaomi, Samsung, Huawei, etc.)
 - **Cross-Platform** - Safe no-op implementation for iOS
 - **TypeScript Support** - Full type definitions included
@@ -71,6 +72,22 @@ console.log('Wake lock released:', released);
 | Android  | Releases the wake lock if held |
 | iOS      | No-op, returns `true` |
 
+### `isWakeLockHeld(): Promise<boolean>`
+
+Checks if a wake lock is currently held.
+
+```typescript
+const isHeld = await BackgroundGuardian.isWakeLockHeld();
+if (!isHeld) {
+  await BackgroundGuardian.acquireWakeLock('MyTask');
+}
+```
+
+| Platform | Behavior |
+|----------|----------|
+| Android  | Returns `true` if wake lock is actively held |
+| iOS      | No-op, returns `false` |
+
 ### `isIgnoringBatteryOptimizations(): Promise<boolean>`
 
 Checks if the app is exempt from battery optimizations (Doze mode whitelist).
@@ -105,6 +122,44 @@ if (dialogShown) {
 | iOS      | No-op, returns `true` |
 
 > **Note**: Google Play has restrictions on using `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`. Only use if your app genuinely requires background execution (messaging, health tracking, device management, etc.).
+
+### `isPowerSaveMode(): Promise<boolean>`
+
+Checks if the device is in Power Save (Battery Saver) mode.
+
+```typescript
+const isPowerSave = await BackgroundGuardian.isPowerSaveMode();
+if (isPowerSave) {
+  Alert.alert(
+    'Battery Saver Active',
+    'Background features may be limited.',
+    [{ text: 'Open Settings', onPress: () => BackgroundGuardian.openPowerSaveModeSettings() }]
+  );
+}
+```
+
+| Platform | Behavior |
+|----------|----------|
+| Android  | Checks `PowerManager.isPowerSaveMode()` |
+| iOS      | No-op, returns `false` |
+
+> **Note**: Power Save mode is different from battery optimization exemptions. An app can be exempt from Doze mode (`isIgnoringBatteryOptimizations() = true`) but still be affected by Power Save mode restrictions.
+
+### `openPowerSaveModeSettings(): Promise<boolean>`
+
+Opens the system Power Save Mode (Battery Saver) settings.
+
+```typescript
+const opened = await BackgroundGuardian.openPowerSaveModeSettings();
+if (opened) {
+  console.log('Battery Saver settings opened');
+}
+```
+
+| Platform | Behavior |
+|----------|----------|
+| Android  | Opens Battery Saver settings page |
+| iOS      | No-op, returns `false` |
 
 ### `openOEMSettings(): Promise<boolean>`
 

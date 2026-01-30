@@ -4,8 +4,11 @@ jest.mock('../NativeBackgroundGuardian', () => ({
   default: {
     acquireWakeLock: jest.fn(),
     releaseWakeLock: jest.fn(),
+    isWakeLockHeld: jest.fn(),
     isIgnoringBatteryOptimizations: jest.fn(),
     requestBatteryOptimizationExemption: jest.fn(),
+    isPowerSaveMode: jest.fn(),
+    openPowerSaveModeSettings: jest.fn(),
     openOEMSettings: jest.fn(),
     getDeviceManufacturer: jest.fn(),
   },
@@ -18,8 +21,11 @@ import NativeBackgroundGuardian from '../NativeBackgroundGuardian';
 import BackgroundGuardian, {
   acquireWakeLock,
   releaseWakeLock,
+  isWakeLockHeld,
   isIgnoringBatteryOptimizations,
   requestBatteryOptimizationExemption,
+  isPowerSaveMode,
+  openPowerSaveModeSettings,
   openOEMSettings,
   getDeviceManufacturer,
   type BackgroundGuardianInterface,
@@ -49,10 +55,13 @@ describe('BackgroundGuardian', () => {
     it('should export all methods on default export', () => {
       expect(BackgroundGuardian.acquireWakeLock).toBeDefined();
       expect(BackgroundGuardian.releaseWakeLock).toBeDefined();
+      expect(BackgroundGuardian.isWakeLockHeld).toBeDefined();
       expect(BackgroundGuardian.isIgnoringBatteryOptimizations).toBeDefined();
       expect(
         BackgroundGuardian.requestBatteryOptimizationExemption
       ).toBeDefined();
+      expect(BackgroundGuardian.isPowerSaveMode).toBeDefined();
+      expect(BackgroundGuardian.openPowerSaveModeSettings).toBeDefined();
       expect(BackgroundGuardian.openOEMSettings).toBeDefined();
       expect(BackgroundGuardian.getDeviceManufacturer).toBeDefined();
     });
@@ -60,8 +69,11 @@ describe('BackgroundGuardian', () => {
     it('should export named functions', () => {
       expect(acquireWakeLock).toBeDefined();
       expect(releaseWakeLock).toBeDefined();
+      expect(isWakeLockHeld).toBeDefined();
       expect(isIgnoringBatteryOptimizations).toBeDefined();
       expect(requestBatteryOptimizationExemption).toBeDefined();
+      expect(isPowerSaveMode).toBeDefined();
+      expect(openPowerSaveModeSettings).toBeDefined();
       expect(openOEMSettings).toBeDefined();
       expect(getDeviceManufacturer).toBeDefined();
     });
@@ -69,11 +81,16 @@ describe('BackgroundGuardian', () => {
     it('should have consistent function references between default and named exports', () => {
       expect(BackgroundGuardian.acquireWakeLock).toBe(acquireWakeLock);
       expect(BackgroundGuardian.releaseWakeLock).toBe(releaseWakeLock);
+      expect(BackgroundGuardian.isWakeLockHeld).toBe(isWakeLockHeld);
       expect(BackgroundGuardian.isIgnoringBatteryOptimizations).toBe(
         isIgnoringBatteryOptimizations
       );
       expect(BackgroundGuardian.requestBatteryOptimizationExemption).toBe(
         requestBatteryOptimizationExemption
+      );
+      expect(BackgroundGuardian.isPowerSaveMode).toBe(isPowerSaveMode);
+      expect(BackgroundGuardian.openPowerSaveModeSettings).toBe(
+        openPowerSaveModeSettings
       );
       expect(BackgroundGuardian.openOEMSettings).toBe(openOEMSettings);
       expect(BackgroundGuardian.getDeviceManufacturer).toBe(
@@ -219,6 +236,53 @@ describe('BackgroundGuardian', () => {
     });
   });
 
+  describe('isWakeLockHeld', () => {
+    it('should return true when wake lock is held', async () => {
+      mockNativeModule.isWakeLockHeld.mockResolvedValue(true);
+
+      const result = await isWakeLockHeld();
+
+      expect(mockNativeModule.isWakeLockHeld).toHaveBeenCalled();
+      expect(result).toBe(true);
+    });
+
+    it('should return false when no wake lock is held', async () => {
+      mockNativeModule.isWakeLockHeld.mockResolvedValue(false);
+
+      const result = await isWakeLockHeld();
+
+      expect(result).toBe(false);
+    });
+
+    it('should handle native module rejection', async () => {
+      mockNativeModule.isWakeLockHeld.mockRejectedValue(
+        new Error('Check failed')
+      );
+
+      await expect(isWakeLockHeld()).rejects.toThrow('Check failed');
+    });
+
+    it('should verify wake lock status after acquire', async () => {
+      mockNativeModule.acquireWakeLock.mockResolvedValue(true);
+      mockNativeModule.isWakeLockHeld.mockResolvedValue(true);
+
+      await acquireWakeLock('TestTask');
+      const isHeld = await isWakeLockHeld();
+
+      expect(isHeld).toBe(true);
+    });
+
+    it('should verify wake lock status after release', async () => {
+      mockNativeModule.releaseWakeLock.mockResolvedValue(true);
+      mockNativeModule.isWakeLockHeld.mockResolvedValue(false);
+
+      await releaseWakeLock();
+      const isHeld = await isWakeLockHeld();
+
+      expect(isHeld).toBe(false);
+    });
+  });
+
   // ==================== Battery Optimization Tests ====================
 
   describe('isIgnoringBatteryOptimizations', () => {
@@ -284,6 +348,94 @@ describe('BackgroundGuardian', () => {
       await expect(requestBatteryOptimizationExemption()).rejects.toThrow(
         'Permission denied'
       );
+    });
+  });
+
+  // ==================== Power Save Mode Tests ====================
+
+  describe('isPowerSaveMode', () => {
+    it('should return true when power save mode is enabled', async () => {
+      mockNativeModule.isPowerSaveMode.mockResolvedValue(true);
+
+      const result = await isPowerSaveMode();
+
+      expect(mockNativeModule.isPowerSaveMode).toHaveBeenCalled();
+      expect(result).toBe(true);
+    });
+
+    it('should return false when power save mode is disabled', async () => {
+      mockNativeModule.isPowerSaveMode.mockResolvedValue(false);
+
+      const result = await isPowerSaveMode();
+
+      expect(result).toBe(false);
+    });
+
+    it('should handle native module rejection', async () => {
+      mockNativeModule.isPowerSaveMode.mockRejectedValue(
+        new Error('PowerManager error')
+      );
+
+      await expect(isPowerSaveMode()).rejects.toThrow('PowerManager error');
+    });
+  });
+
+  describe('openPowerSaveModeSettings', () => {
+    it('should return true when settings are opened', async () => {
+      mockNativeModule.openPowerSaveModeSettings.mockResolvedValue(true);
+
+      const result = await openPowerSaveModeSettings();
+
+      expect(mockNativeModule.openPowerSaveModeSettings).toHaveBeenCalled();
+      expect(result).toBe(true);
+    });
+
+    it('should return false when settings cannot be opened', async () => {
+      mockNativeModule.openPowerSaveModeSettings.mockResolvedValue(false);
+
+      const result = await openPowerSaveModeSettings();
+
+      expect(result).toBe(false);
+    });
+
+    it('should handle native module rejection', async () => {
+      mockNativeModule.openPowerSaveModeSettings.mockRejectedValue(
+        new Error('Settings error')
+      );
+
+      await expect(openPowerSaveModeSettings()).rejects.toThrow(
+        'Settings error'
+      );
+    });
+  });
+
+  describe('Power Save Mode Integration', () => {
+    it('should handle typical power save mode check and action flow', async () => {
+      mockNativeModule.isPowerSaveMode.mockResolvedValue(true);
+      mockNativeModule.openPowerSaveModeSettings.mockResolvedValue(true);
+
+      const isPowerSave = await isPowerSaveMode();
+
+      if (isPowerSave) {
+        const opened = await openPowerSaveModeSettings();
+        expect(opened).toBe(true);
+      }
+
+      expect(mockNativeModule.isPowerSaveMode).toHaveBeenCalled();
+      expect(mockNativeModule.openPowerSaveModeSettings).toHaveBeenCalled();
+    });
+
+    it('should distinguish between battery optimization and power save mode', async () => {
+      // App can be exempt from Doze but still affected by Power Save mode
+      mockNativeModule.isIgnoringBatteryOptimizations.mockResolvedValue(true);
+      mockNativeModule.isPowerSaveMode.mockResolvedValue(true);
+
+      const isDozeExempt = await isIgnoringBatteryOptimizations();
+      const isPowerSave = await isPowerSaveMode();
+
+      // Both can be true simultaneously
+      expect(isDozeExempt).toBe(true);
+      expect(isPowerSave).toBe(true);
     });
   });
 
@@ -373,10 +525,13 @@ describe('BackgroundGuardian', () => {
         // Simulate iOS no-op responses
         mockNativeModule.acquireWakeLock.mockResolvedValue(true);
         mockNativeModule.releaseWakeLock.mockResolvedValue(true);
+        mockNativeModule.isWakeLockHeld.mockResolvedValue(false);
         mockNativeModule.isIgnoringBatteryOptimizations.mockResolvedValue(true);
         mockNativeModule.requestBatteryOptimizationExemption.mockResolvedValue(
           true
         );
+        mockNativeModule.isPowerSaveMode.mockResolvedValue(false);
+        mockNativeModule.openPowerSaveModeSettings.mockResolvedValue(false);
         mockNativeModule.openOEMSettings.mockResolvedValue(false);
         mockNativeModule.getDeviceManufacturer.mockResolvedValue('apple');
       });
@@ -391,6 +546,11 @@ describe('BackgroundGuardian', () => {
         expect(result).toBe(true);
       });
 
+      it('should return false for isWakeLockHeld on iOS', async () => {
+        const result = await isWakeLockHeld();
+        expect(result).toBe(false);
+      });
+
       it('should return true for isIgnoringBatteryOptimizations on iOS', async () => {
         const result = await isIgnoringBatteryOptimizations();
         expect(result).toBe(true);
@@ -399,6 +559,16 @@ describe('BackgroundGuardian', () => {
       it('should return true for requestBatteryOptimizationExemption on iOS', async () => {
         const result = await requestBatteryOptimizationExemption();
         expect(result).toBe(true);
+      });
+
+      it('should return false for isPowerSaveMode on iOS', async () => {
+        const result = await isPowerSaveMode();
+        expect(result).toBe(false);
+      });
+
+      it('should return false for openPowerSaveModeSettings on iOS', async () => {
+        const result = await openPowerSaveModeSettings();
+        expect(result).toBe(false);
       });
 
       it('should return false for openOEMSettings on iOS', async () => {
@@ -524,6 +694,13 @@ describe('BackgroundGuardian', () => {
       );
     });
 
+    it('should propagate errors from isWakeLockHeld', async () => {
+      const error = new Error('Wake lock check failed');
+      mockNativeModule.isWakeLockHeld.mockRejectedValue(error);
+
+      await expect(isWakeLockHeld()).rejects.toThrow('Wake lock check failed');
+    });
+
     it('should propagate errors from isIgnoringBatteryOptimizations', async () => {
       const error = new Error('Permission check failed');
       mockNativeModule.isIgnoringBatteryOptimizations.mockRejectedValue(error);
@@ -541,6 +718,24 @@ describe('BackgroundGuardian', () => {
 
       await expect(requestBatteryOptimizationExemption()).rejects.toThrow(
         'Activity not found'
+      );
+    });
+
+    it('should propagate errors from isPowerSaveMode', async () => {
+      const error = new Error('PowerManager unavailable');
+      mockNativeModule.isPowerSaveMode.mockRejectedValue(error);
+
+      await expect(isPowerSaveMode()).rejects.toThrow(
+        'PowerManager unavailable'
+      );
+    });
+
+    it('should propagate errors from openPowerSaveModeSettings', async () => {
+      const error = new Error('Settings activity not found');
+      mockNativeModule.openPowerSaveModeSettings.mockRejectedValue(error);
+
+      await expect(openPowerSaveModeSettings()).rejects.toThrow(
+        'Settings activity not found'
       );
     });
 

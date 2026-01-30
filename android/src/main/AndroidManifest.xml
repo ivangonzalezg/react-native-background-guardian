@@ -1,14 +1,48 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Required for Wake Lock functionality to keep CPU running in background -->
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <!-- Required for Wake Lock functionality to keep CPU running in background -->
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!--
-        Required for requesting battery optimization exemption (Doze mode whitelist).
-        This permission allows the app to show the system dialog asking the user
-        to disable battery optimizations for this app.
-        Note: Google Play has restrictions on using this permission. Only use if your
-        app genuinely requires background execution (messaging, health tracking, etc.).
-        Available on Android 6.0 (API 23) and above.
-    -->
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+  <!--
+      Required for requesting battery optimization exemption (Doze mode whitelist).
+      This permission allows the app to show the system dialog asking the user
+      to disable battery optimizations for this app.
+      Note: Google Play has restrictions on using this permission. Only use if your
+      app genuinely requires background execution (messaging, health tracking, etc.).
+      Available on Android 6.0 (API 23) and above.
+  -->
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+  <!--
+      Queries declaration for Android 11+ (API 30+) package visibility.
+      Allows the app to query and verify availability of system settings intents.
+      Required for checking if battery/power settings activities are available before
+      attempting to open them.
+  -->
+  <queries>
+    <!-- General settings intents -->
+    <intent>
+      <action android:name="android.settings.SETTINGS" />
+    </intent>
+
+    <!-- Battery saver / power save mode settings -->
+    <intent>
+      <action android:name="android.settings.BATTERY_SAVER_SETTINGS" />
+    </intent>
+
+    <!-- Battery usage summary -->
+    <intent>
+      <action android:name="android.intent.action.POWER_USAGE_SUMMARY" />
+    </intent>
+
+    <!-- Battery optimization settings list -->
+    <intent>
+      <action android:name="android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS" />
+    </intent>
+
+    <!-- App details settings (used as fallback) -->
+    <intent>
+      <action android:name="android.settings.APPLICATION_DETAILS_SETTINGS" />
+      <data android:scheme="package" />
+    </intent>
+  </queries>
 </manifest>
