@@ -47,10 +47,11 @@ class BackgroundGuardianModule(reactContext: ReactApplicationContext) :
    * backlight to turn off. This is the minimum level needed for background processing.
    *
    * @param tag Identifier for the wake lock (used in system logs for debugging)
+   * @param timeout Timeout in milliseconds after which the lock will be automatically released
    * @param promise Resolves to true if acquired successfully, false otherwise
    */
   @SuppressLint("WakelockTimeout")
-  override fun acquireWakeLock(tag: String, promise: Promise) {
+  override fun acquireWakeLock(tag: String, timeout: Double, promise: Promise) {
     try {
       // If we already have an active wake lock, return true without acquiring another
       wakeLock?.let {
@@ -76,12 +77,11 @@ class BackgroundGuardianModule(reactContext: ReactApplicationContext) :
         PowerManager.PARTIAL_WAKE_LOCK,
         wakeLockTag
       ).apply {
-        // Acquire without timeout - must be explicitly released
-        // TODO: Fix timeout lint warning
-        acquire()
+        // Acquire with timeout
+        acquire(timeout.toLong())
       }
 
-      Log.d(TAG, "Wake lock acquired with tag: $wakeLockTag")
+      Log.d(TAG, "Wake lock acquired with tag: $wakeLockTag, timeout: ${timeout.toLong()}ms")
       promise.resolve(true)
     } catch (e: Exception) {
       Log.e(TAG, "Failed to acquire wake lock", e)
@@ -246,6 +246,54 @@ class BackgroundGuardianModule(reactContext: ReactApplicationContext) :
       promise.resolve(false)
     } catch (e: Exception) {
       Log.e(TAG, "Failed to request battery optimization exemption", e)
+      promise.resolve(false)
+    }
+  }
+
+
+
+  /**
+   * Opens the system battery optimization settings list.
+   *
+   * @param promise Resolves to true if the settings page was opened successfully
+   */
+  override fun openBatteryOptimizationSettings(promise: Promise) {
+    if (openBatteryOptimizationSettingsInternal()) {
+      Log.d(TAG, "Opened battery optimization settings")
+      promise.resolve(true)
+    } else {
+      Log.d(TAG, "Failed to open battery optimization settings")
+      promise.resolve(false)
+    }
+  }
+
+  /**
+   * Checks if the device is currently in idle (Doze) mode.
+   *
+   * Doze mode is activated when the device is unplugged, stationary, and screen-off
+   * for a period of time.
+   *
+   * API Level Support:
+   * - API < 23: Returns false (Doze mode not available)
+   * - API >= 23: Checks PowerManager.isDeviceIdleMode()
+   *
+   * @param promise Resolves to true if the device is in idle mode, false otherwise
+   */
+  override fun isDeviceIdleMode(promise: Promise) {
+    try {
+      val powerManager =
+        reactApplicationContext.getSystemService(Context.POWER_SERVICE) as? PowerManager
+      if (powerManager == null) {
+        Log.e(TAG, "PowerManager service not available")
+        promise.resolve(false)
+        return
+      }
+
+      val isIdle = powerManager.isDeviceIdleMode
+      Log.d(TAG, "Device idle mode status: $isIdle")
+      promise.resolve(isIdle)
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to check device idle mode", e)
       promise.resolve(false)
     }
   }
@@ -572,7 +620,7 @@ class BackgroundGuardianModule(reactContext: ReactApplicationContext) :
       }
 
       // Fallback 1: Try to open battery optimization settings list (API 23+)
-      if (openBatteryOptimizationSettings()) {
+      if (openBatteryOptimizationSettingsInternal()) {
         Log.d(TAG, "Opened battery optimization settings as fallback")
         promise.resolve(true)
         return
@@ -636,7 +684,7 @@ class BackgroundGuardianModule(reactContext: ReactApplicationContext) :
   }
 
   /**
-   * Opens the battery optimization settings list.
+   * Opens the battery optimization settings list (Internal helper).
    *
    * This shows the list of all apps with their battery optimization status,
    * where the user can manually enable/disable optimization for any app.
@@ -644,7 +692,7 @@ class BackgroundGuardianModule(reactContext: ReactApplicationContext) :
    *
    * @return true if the settings page was opened successfully, false otherwise
    */
-  private fun openBatteryOptimizationSettings(): Boolean {
+  private fun openBatteryOptimizationSettingsInternal(): Boolean {
     return try {
       val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

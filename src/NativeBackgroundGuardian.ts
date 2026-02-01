@@ -14,9 +14,10 @@ export interface Spec extends TurboModule {
    * On iOS, this is a no-op and returns true immediately.
    *
    * @param tag - Optional identifier for the wake lock (useful for debugging)
+   * @param timeout - Optional timeout in milliseconds. Defaults to 24 hours.
    * @returns Promise resolving to true if successfully acquired, false otherwise
    */
-  acquireWakeLock(tag: string): Promise<boolean>;
+  acquireWakeLock(tag: string, timeout: number): Promise<boolean>;
 
   /**
    * Releases a previously acquired wake lock.
@@ -63,6 +64,24 @@ export interface Spec extends TurboModule {
    * @returns Promise resolving to true if settings were opened, false if not available
    */
   openOEMSettings(): Promise<boolean>;
+
+  /**
+   * Opens the system battery optimization settings list.
+   * On Android, opens the list of apps where users can toggle battery optimization.
+   * On iOS, this is a no-op and returns false immediately.
+   *
+   * @returns Promise resolving to true if settings were opened, false otherwise
+   */
+  openBatteryOptimizationSettings(): Promise<boolean>;
+
+  /**
+   * Checks if the device is currently in idle (Doze) mode.
+   * On Android, checks PowerManager.isDeviceIdleMode().
+   * On iOS, this is a no-op and returns false immediately.
+   *
+   * @returns Promise resolving to true if the device is in idle mode, false otherwise
+   */
+  isDeviceIdleMode(): Promise<boolean>;
 
   /**
    * Checks if the device is in Power Save (Battery Saver) mode.

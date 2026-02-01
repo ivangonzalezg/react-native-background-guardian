@@ -39,10 +39,12 @@
  * which are configured in Info.plist, not acquired programmatically.
  *
  * @param tag Identifier for the wake lock (ignored on iOS)
+ * @param timeout Timeout in milliseconds (ignored on iOS)
  * @param resolve Promise resolver - always resolves with true
  * @param reject Promise rejecter - never called
  */
 - (void)acquireWakeLock:(NSString *)tag
+                timeout:(double)timeout
                 resolve:(RCTPromiseResolveBlock)resolve
                  reject:(RCTPromiseRejectBlock)reject
 {
@@ -175,6 +177,34 @@
 {
     // No-op: iOS has no OEM-specific settings (Apple is the only "OEM").
     // Return false to indicate no settings were opened.
+    resolve(@(NO));
+}
+
+/**
+ * Opens battery optimization settings list (no-op on iOS).
+ *
+ * iOS doesn't have a granular battery optimization settings list for apps.
+ *
+ * @param resolve Promise resolver - always resolves with false
+ * @param reject Promise rejecter - never called
+ */
+- (void)openBatteryOptimizationSettings:(RCTPromiseResolveBlock)resolve
+                                 reject:(RCTPromiseRejectBlock)reject
+{
+    resolve(@(NO));
+}
+
+/**
+ * Checks if device is in idle mode (no-op on iOS).
+ *
+ * iOS doesn't expose a "Doze" equivalent status in the same way.
+ *
+ * @param resolve Promise resolver - always resolves with false
+ * @param reject Promise rejecter - never called
+ */
+- (void)isDeviceIdleMode:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject
+{
     resolve(@(NO));
 }
 

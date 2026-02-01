@@ -36,15 +36,18 @@ No additional setup required. Permissions are automatically merged via the Andro
 
 ## API Reference
 
-### `acquireWakeLock(tag?: string): Promise<boolean>`
+### `acquireWakeLock(tag?: string, timeout?: number): Promise<boolean>`
 
 Acquires a partial wake lock to keep the CPU running while the screen is off.
+
+- `tag`: Optional identifier for debugging. Defaults to "BackgroundGuardian".
+- `timeout`: Optional timeout in milliseconds. Defaults to **24 hours** (86,400,000 ms). **Note**: The wake lock is automatically released after this time to prevent battery drain if the app crashes.
 
 ```typescript
 import BackgroundGuardian from 'react-native-background-guardian';
 
-// Acquire wake lock before starting background work
-const acquired = await BackgroundGuardian.acquireWakeLock('MyBackgroundTask');
+// Acquire wake lock with a custom 10-minute timeout
+const acquired = await BackgroundGuardian.acquireWakeLock('MyBackgroundTask', 10 * 60 * 1000);
 if (acquired) {
   // Perform background work
   await doBackgroundWork();
@@ -122,6 +125,36 @@ if (dialogShown) {
 | iOS      | No-op, returns `true` |
 
 > **Note**: Google Play has restrictions on using `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`. Only use if your app genuinely requires background execution (messaging, health tracking, device management, etc.).
+
+### `openBatteryOptimizationSettings(): Promise<boolean>`
+
+Opens the system list of apps allowed to ignore battery optimizations. This is a safer alternative to `requestBatteryOptimizationExemption` as it requires no special permission and avoids Google Play policy issues.
+
+```typescript
+// Open the settings list so the user can manually toggle the switch
+await BackgroundGuardian.openBatteryOptimizationSettings();
+```
+
+| Platform | Behavior |
+|----------|----------|
+| Android  | Opens `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS` |
+| iOS      | No-op, returns `false` |
+
+### `isDeviceIdleMode(): Promise<boolean>`
+
+Checks if the device is currently in idle (Doze) mode.
+
+```typescript
+const isIdle = await BackgroundGuardian.isDeviceIdleMode();
+if (isIdle) {
+  console.log('App is running during a Doze maintenance window');
+}
+```
+
+| Platform | Behavior |
+|----------|----------|
+| Android  | Checks `PowerManager.isDeviceIdleMode()` |
+| iOS      | No-op, returns `false` |
 
 ### `isPowerSaveMode(): Promise<boolean>`
 
@@ -328,6 +361,96 @@ export function useBackgroundGuardian() {
   };
 }
 ```
+
+## Surviving Android Doze and App Standby
+
+Android has two power-saving features that extend battery life by managing how apps behave when a device isn't connected to a power source: **Doze** and **App Standby**.
+
+- **Doze**: Reduces battery consumption by deferring background CPU and network activity when the device is unused for long periods.
+- **App Standby**: Defers background network activity for apps with no recent user activity.
+
+### Doze Mode Strategies
+
+When Doze mode is active, the system:
+- Suspends network access.
+- Ignores wake locks (unless you are in a maintenance window).
+- Defers alarms.
+- Stops Wi-Fi scans.
+
+#### Solution A: Battery Optimization Exemption
+
+Apps that are partially exempt from battery optimizations can:
+- Use the network.
+- Hold partial wake locks **even during Doze**.
+
+**How to implement:**
+
+1.  Check if you are already exempt:
+    ```typescript
+    const isIgnoring = await BackgroundGuardian.isIgnoringBatteryOptimizations();
+    ```
+2.  If not, guide the user to the settings. You have two options:
+    *   **Option 1: Request Dialog (Restricted)**
+        *   Uses `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`.
+        *   Shows a direct "Allow" dialog.
+        *   **Warning**: Google Play restricts this permission to specific use cases (see "Acceptable Use Cases" below).
+        ```typescript
+        await BackgroundGuardian.requestBatteryOptimizationExemption();
+        ```
+    *   **Option 2: Settings List (Safe)**
+        *   Opens the list of apps. User must find your app and select "Don't optimize".
+        *   Safe for all apps; no special permissions needed.
+        ```typescript
+        await BackgroundGuardian.openBatteryOptimizationSettings();
+        ```
+
+3.  **Handle OEM-Specific Restrictions**: Some manufacturers (Xiaomi, Samsung, etc.) have *additional* battery savers. Use `openOEMSettings()` to help the user disable them.
+
+#### Solution B: Foreground Services
+
+If your app needs to run constantly (e.g., Music Player, Fitness Tracker), you **must** use a Foreground Service. A foreground service shows a persistent notification, signaling to the system that the app is "active" even if not on screen.
+
+- **Note**: `react-native-background-guardian` helps with *Wake Locks* and *Settings*, but you need a library like `react-native-background-actions` or native code to start a Foreground Service.
+- A Foreground Service prevents the system from considering your app "Idle", thus avoiding App Standby.
+
+### Testing Doze Mode
+
+You can force your device into Doze mode to test how your app behaves.
+
+1.  Connect device via ADB.
+2.  Force Idle Mode:
+    ```bash
+    adb shell dumpsys deviceidle force-idle
+    ```
+3.  You can use `BackgroundGuardian.isDeviceIdleMode()` to log when this happens.
+4.  To exit:
+    ```bash
+    adb shell dumpsys deviceidle unforce
+    adb shell dumpsys battery reset
+    ```
+
+### Acceptable Use Cases for Exemption
+
+If you use `requestBatteryOptimizationExemption()` (the direct dialog), your app must fall into one of these categories to be allowed on Google Play:
+
+| App Type | Description |
+|----------|-------------|
+| **Chat / Voice / Video** | Apps needing real-time messaging where FCM High Priority is insufficient. |
+| **Task Automation** | Apps that schedule automated actions (macros). |
+| **Health / Fitness** | Tracking workouts (often combined with Foreground Service). |
+| **Device Connection** | Companion apps for smartwatches, IoT devices, etc. |
+| **Safety** | Apps for personal safety (SOS). |
+| **VPN / Proxy** | Network tools. |
+
+**If your app does not fit these categories**, do not use `requestBatteryOptimizationExemption()`. Instead, use `openBatteryOptimizationSettings()` and instruct the user manually.
+
+### Checklist for Background Reliability
+
+1.  [ ] **Wake Lock**: Call `acquireWakeLock()` during critical tasks.
+2.  [ ] **Exemption**: Check `isIgnoringBatteryOptimizations()`.
+3.  [ ] **Power Saver**: Check `isPowerSaveMode()` (System Battery Saver affects even exempt apps!).
+4.  [ ] **OEM Settings**: Check `getDeviceManufacturer()` and show instructions for Xiaomi/Huawei/Samsung users.
+5.  [ ] **Foreground Service**: Use if you need continuous long-running execution.
 
 ## Android Permissions
 

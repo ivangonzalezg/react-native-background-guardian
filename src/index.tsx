@@ -32,9 +32,10 @@ export interface BackgroundGuardianInterface {
   /**
    * Acquires a partial wake lock to keep the CPU running.
    * @param tag - Optional identifier for debugging purposes
+   * @param timeout - Optional timeout in milliseconds. Defaults to 24 hours (86400000ms).
    * @returns Promise resolving to true if acquired successfully
    */
-  acquireWakeLock: (tag?: string) => Promise<boolean>;
+  acquireWakeLock: (tag?: string, timeout?: number) => Promise<boolean>;
 
   /**
    * Releases a previously acquired wake lock.
@@ -65,6 +66,18 @@ export interface BackgroundGuardianInterface {
    * @returns Promise resolving to true if settings were opened
    */
   openOEMSettings: () => Promise<boolean>;
+
+  /**
+   * Opens the system battery optimization settings list.
+   * @returns Promise resolving to true if settings were opened
+   */
+  openBatteryOptimizationSettings: () => Promise<boolean>;
+
+  /**
+   * Checks if the device is currently in idle (Doze) mode.
+   * @returns Promise resolving to true if in idle mode
+   */
+  isDeviceIdleMode: () => Promise<boolean>;
 
   /**
    * Checks if the device is in Power Save (Battery Saver) mode.
@@ -98,6 +111,8 @@ export interface BackgroundGuardianInterface {
  * @param tag - Optional identifier for the wake lock. Useful for debugging
  *              and identifying which component holds the lock. Defaults to
  *              "BackgroundGuardian".
+ * @param timeout - Optional timeout in milliseconds after which the wake lock
+ *                  will be automatically released. Defaults to 24 hours (86400000ms).
  * @returns Promise resolving to `true` if the wake lock was successfully
  *          acquired, `false` otherwise.
  *
@@ -116,9 +131,10 @@ export interface BackgroundGuardianInterface {
  * @see releaseWakeLock
  */
 export function acquireWakeLock(
-  tag: string = 'BackgroundGuardian'
+  tag: string = 'BackgroundGuardian',
+  timeout: number = 86400000
 ): Promise<boolean> {
-  return NativeBackgroundGuardian.acquireWakeLock(tag);
+  return NativeBackgroundGuardian.acquireWakeLock(tag, timeout);
 }
 
 /**
@@ -343,6 +359,39 @@ export function openOEMSettings(): Promise<boolean> {
 }
 
 /**
+ * Opens the system battery optimization settings list.
+ *
+ * On Android, this opens the list of apps where users can manually toggle
+ * battery optimization for specific apps. This is a safer alternative to
+ * `requestBatteryOptimizationExemption` as it doesn't require special permissions
+ * and is not restricted by Google Play policies, though it requires more user steps.
+ *
+ * On iOS, this is a no-op that returns `false` immediately.
+ *
+ * @returns Promise resolving to `true` if settings were successfully opened,
+ *          `false` otherwise.
+ */
+export function openBatteryOptimizationSettings(): Promise<boolean> {
+  return NativeBackgroundGuardian.openBatteryOptimizationSettings();
+}
+
+/**
+ * Checks if the device is currently in idle (Doze) mode.
+ *
+ * On Android, this checks `PowerManager.isDeviceIdleMode()`. Doze mode is activated
+ * when the device is unplugged, stationary, and the screen is off for a period of time.
+ * In this mode, system restricts apps' access to network and CPU-intensive services.
+ *
+ * On iOS, this applies less directly but returns `false` for API consistency.
+ *
+ * @returns Promise resolving to `true` if the device is in idle (Doze) mode,
+ *          `false` otherwise.
+ */
+export function isDeviceIdleMode(): Promise<boolean> {
+  return NativeBackgroundGuardian.isDeviceIdleMode();
+}
+
+/**
  * Gets the device manufacturer name.
  *
  * On Android, this returns the value of `Build.MANUFACTURER`, which identifies
@@ -392,6 +441,8 @@ const BackgroundGuardian: BackgroundGuardianInterface = {
   isPowerSaveMode,
   openPowerSaveModeSettings,
   openOEMSettings,
+  openBatteryOptimizationSettings,
+  isDeviceIdleMode,
   getDeviceManufacturer,
 };
 

@@ -14,6 +14,7 @@ export default function App() {
   const [isIgnoring, setIsIgnoring] = useState<boolean | null>(null);
   const [wakeLockHeld, setWakeLockHeld] = useState(false);
   const [isPowerSave, setIsPowerSave] = useState<boolean | null>(null);
+  const [isDeviceIdle, setIsDeviceIdle] = useState<boolean | null>(null);
 
   const refreshWakeLockStatus = useCallback(async () => {
     const isHeld = await BackgroundGuardian.isWakeLockHeld();
@@ -30,13 +31,24 @@ export default function App() {
     setIsPowerSave(powerSave);
   }, []);
 
+  const refreshDeviceIdleStatus = useCallback(async () => {
+    const deviceIdle = await BackgroundGuardian.isDeviceIdleMode();
+    setIsDeviceIdle(deviceIdle);
+  }, []);
+
   const init = useCallback(async () => {
     const mfr = await BackgroundGuardian.getDeviceManufacturer();
     setManufacturer(mfr);
     await refreshBatteryStatus();
     await refreshPowerSaveStatus();
     await refreshWakeLockStatus();
-  }, [refreshBatteryStatus, refreshPowerSaveStatus, refreshWakeLockStatus]);
+    await refreshDeviceIdleStatus();
+  }, [
+    refreshBatteryStatus,
+    refreshPowerSaveStatus,
+    refreshWakeLockStatus,
+    refreshDeviceIdleStatus,
+  ]);
 
   useEffect(() => {
     init();
@@ -48,9 +60,15 @@ export default function App() {
         refreshBatteryStatus();
         refreshPowerSaveStatus();
         refreshWakeLockStatus();
+        refreshDeviceIdleStatus();
       }
     },
-    [refreshBatteryStatus, refreshPowerSaveStatus, refreshWakeLockStatus]
+    [
+      refreshBatteryStatus,
+      refreshPowerSaveStatus,
+      refreshWakeLockStatus,
+      refreshDeviceIdleStatus,
+    ]
   );
 
   // Refresh battery status when app comes back to foreground
@@ -89,6 +107,10 @@ export default function App() {
     await BackgroundGuardian.openPowerSaveModeSettings();
   }, []);
 
+  const handleOpenBatterySettings = useCallback(async () => {
+    await BackgroundGuardian.openBatteryOptimizationSettings();
+  }, []);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>BackgroundGuardian</Text>
@@ -122,6 +144,13 @@ export default function App() {
         </Text>
       </View>
 
+      <View style={styles.infoContainer}>
+        <Text style={styles.label}>Device Idle (Doze):</Text>
+        <Text style={styles.value}>
+          {isDeviceIdle === null ? 'Loading...' : isDeviceIdle ? 'Yes' : 'No'}
+        </Text>
+      </View>
+
       <View style={styles.buttonContainer}>
         <Button
           title={wakeLockHeld ? 'Release Wake Lock' : 'Acquire Wake Lock'}
@@ -133,6 +162,13 @@ export default function App() {
         <Button
           title="Request Battery Exemption"
           onPress={handleRequestExemption}
+        />
+      </View>
+
+      <View style={styles.buttonContainer}>
+        <Button
+          title="Open Battery Opt. Settings"
+          onPress={handleOpenBatterySettings}
         />
       </View>
 
