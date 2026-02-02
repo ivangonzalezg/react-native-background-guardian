@@ -135,7 +135,8 @@ describe('BackgroundGuardian', () => {
       const result = await acquireWakeLock();
 
       expect(mockNativeModule.acquireWakeLock).toHaveBeenCalledWith(
-        'BackgroundGuardian'
+        'BackgroundGuardian',
+        86400000
       );
       expect(result).toBe(true);
     });
@@ -146,7 +147,20 @@ describe('BackgroundGuardian', () => {
       const result = await acquireWakeLock('MyCustomTag');
 
       expect(mockNativeModule.acquireWakeLock).toHaveBeenCalledWith(
-        'MyCustomTag'
+        'MyCustomTag',
+        86400000
+      );
+      expect(result).toBe(true);
+    });
+
+    it('should call native module with custom timeout', async () => {
+      mockNativeModule.acquireWakeLock.mockResolvedValue(true);
+
+      const result = await acquireWakeLock('CustomTimeout', 10000);
+
+      expect(mockNativeModule.acquireWakeLock).toHaveBeenCalledWith(
+        'CustomTimeout',
+        10000
       );
       expect(result).toBe(true);
     });
@@ -172,7 +186,10 @@ describe('BackgroundGuardian', () => {
 
       await acquireWakeLock('');
 
-      expect(mockNativeModule.acquireWakeLock).toHaveBeenCalledWith('');
+      expect(mockNativeModule.acquireWakeLock).toHaveBeenCalledWith(
+        '',
+        86400000
+      );
     });
   });
 
@@ -591,7 +608,8 @@ describe('BackgroundGuardian', () => {
         const manufacturer = await getDeviceManufacturer();
 
         expect(mockNativeModule.acquireWakeLock).toHaveBeenCalledWith(
-          'AndroidTask'
+          'AndroidTask',
+          86400000
         );
         expect(manufacturer).toBe('samsung');
       });
