@@ -50,6 +50,18 @@ export interface BackgroundGuardianInterface {
   isWakeLockHeld: () => Promise<boolean>;
 
   /**
+   * Enables a screen wake lock to keep the display on while the app is in the foreground.
+   * @returns Promise resolving to true if enabled successfully
+   */
+  enableScreenWakeLock: () => Promise<boolean>;
+
+  /**
+   * Disables the screen wake lock, allowing the display to turn off normally.
+   * @returns Promise resolving to true if disabled successfully
+   */
+  disableScreenWakeLock: () => Promise<boolean>;
+
+  /**
    * Checks if the app is ignoring battery optimizations.
    * @returns Promise resolving to true if ignoring optimizations
    */
@@ -186,6 +198,46 @@ export function releaseWakeLock(): Promise<boolean> {
  */
 export function isWakeLockHeld(): Promise<boolean> {
   return NativeBackgroundGuardian.isWakeLockHeld();
+}
+
+/**
+ * Enables a screen wake lock to keep the display on while the app is in the foreground.
+ *
+ * On Android, this sets `FLAG_KEEP_SCREEN_ON` on the current Activity window.
+ * On iOS, this disables the idle timer (`UIApplication.shared.isIdleTimerDisabled = true`).
+ *
+ * Note: This keeps the screen awake only while the app is in the foreground.
+ * It does not replace `acquireWakeLock()` for background CPU execution.
+ *
+ * @returns Promise resolving to `true` if the screen wake lock was enabled,
+ *          `false` otherwise.
+ *
+ * @example
+ * ```typescript
+ * const enabled = await enableScreenWakeLock();
+ * console.log('Keep screen on:', enabled);
+ * ```
+ */
+export function enableScreenWakeLock(): Promise<boolean> {
+  return NativeBackgroundGuardian.enableScreenWakeLock();
+}
+
+/**
+ * Disables the screen wake lock, allowing the display to turn off normally.
+ *
+ * On Android, this clears `FLAG_KEEP_SCREEN_ON` on the current Activity window.
+ * On iOS, this re-enables the idle timer (`UIApplication.shared.isIdleTimerDisabled = false`).
+ *
+ * @returns Promise resolving to `true` if the screen wake lock was disabled,
+ *          `false` otherwise.
+ *
+ * @example
+ * ```typescript
+ * await disableScreenWakeLock();
+ * ```
+ */
+export function disableScreenWakeLock(): Promise<boolean> {
+  return NativeBackgroundGuardian.disableScreenWakeLock();
 }
 
 /**
@@ -436,6 +488,8 @@ const BackgroundGuardian: BackgroundGuardianInterface = {
   acquireWakeLock,
   releaseWakeLock,
   isWakeLockHeld,
+  enableScreenWakeLock,
+  disableScreenWakeLock,
   isIgnoringBatteryOptimizations,
   requestBatteryOptimizationExemption,
   isPowerSaveMode,

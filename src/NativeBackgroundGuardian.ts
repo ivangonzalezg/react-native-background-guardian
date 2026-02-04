@@ -38,6 +38,24 @@ export interface Spec extends TurboModule {
   isWakeLockHeld(): Promise<boolean>;
 
   /**
+   * Enables a screen wake lock to keep the display on while the app is in the foreground.
+   * On Android, this sets FLAG_KEEP_SCREEN_ON on the current Activity window.
+   * On iOS, this disables the idle timer (UIApplication.idleTimerDisabled = true).
+   *
+   * @returns Promise resolving to true if successfully enabled, false otherwise
+   */
+  enableScreenWakeLock(): Promise<boolean>;
+
+  /**
+   * Disables the screen wake lock, allowing the display to turn off normally.
+   * On Android, this clears FLAG_KEEP_SCREEN_ON on the current Activity window.
+   * On iOS, this re-enables the idle timer (UIApplication.idleTimerDisabled = false).
+   *
+   * @returns Promise resolving to true if successfully disabled, false otherwise
+   */
+  disableScreenWakeLock(): Promise<boolean>;
+
+  /**
    * Checks if the app is currently ignoring battery optimizations.
    * On Android, checks if the app is whitelisted from Doze mode.
    * On iOS, this is a no-op and returns true immediately.

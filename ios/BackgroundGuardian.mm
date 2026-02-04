@@ -1,4 +1,5 @@
 #import "BackgroundGuardian.h"
+#import <UIKit/UIKit.h>
 
 /**
  * BackgroundGuardian iOS Implementation
@@ -81,6 +82,42 @@
 {
     // No-op: iOS doesn't have wake locks, so none can be held.
     resolve(@(NO));
+}
+
+#pragma mark - Screen Wake Lock Methods
+
+/**
+ * Enables a screen wake lock to keep the display on while the app is in the foreground.
+ *
+ * On iOS, this disables the idle timer (UIApplication.idleTimerDisabled).
+ *
+ * @param resolve Promise resolver - resolves with true
+ * @param reject Promise rejecter - never called
+ */
+- (void)enableScreenWakeLock:(RCTPromiseResolveBlock)resolve
+                      reject:(RCTPromiseRejectBlock)reject
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [UIApplication sharedApplication].idleTimerDisabled = YES;
+        resolve(@(YES));
+    });
+}
+
+/**
+ * Disables the screen wake lock, allowing the display to turn off normally.
+ *
+ * On iOS, this re-enables the idle timer (UIApplication.idleTimerDisabled = NO).
+ *
+ * @param resolve Promise resolver - resolves with true
+ * @param reject Promise rejecter - never called
+ */
+- (void)disableScreenWakeLock:(RCTPromiseResolveBlock)resolve
+                       reject:(RCTPromiseRejectBlock)reject
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [UIApplication sharedApplication].idleTimerDisabled = NO;
+        resolve(@(YES));
+    });
 }
 
 #pragma mark - Battery Optimization Methods

@@ -13,6 +13,7 @@ export default function App() {
   const [manufacturer, setManufacturer] = useState<string | null>(null);
   const [isIgnoring, setIsIgnoring] = useState<boolean | null>(null);
   const [wakeLockHeld, setWakeLockHeld] = useState(false);
+  const [isScreenWakeLockEnabled, setIsScreenWakeLockEnabled] = useState(false);
   const [isPowerSave, setIsPowerSave] = useState<boolean | null>(null);
   const [isDeviceIdle, setIsDeviceIdle] = useState<boolean | null>(null);
 
@@ -94,6 +95,20 @@ export default function App() {
     await refreshWakeLockStatus();
   }, [refreshWakeLockStatus]);
 
+  const handleEnableScreenWakeLock = useCallback(async () => {
+    const enabled = await BackgroundGuardian.enableScreenWakeLock();
+    if (enabled) {
+      setIsScreenWakeLockEnabled(true);
+    }
+  }, []);
+
+  const handleDisableScreenWakeLock = useCallback(async () => {
+    const disabled = await BackgroundGuardian.disableScreenWakeLock();
+    if (disabled) {
+      setIsScreenWakeLockEnabled(false);
+    }
+  }, []);
+
   const handleRequestExemption = useCallback(async () => {
     await BackgroundGuardian.requestBatteryOptimizationExemption();
     await refreshBatteryStatus();
@@ -138,6 +153,13 @@ export default function App() {
       </View>
 
       <View style={styles.infoContainer}>
+        <Text style={styles.label}>Keep Screen On:</Text>
+        <Text style={styles.value}>
+          {isScreenWakeLockEnabled ? 'Yes' : 'No'}
+        </Text>
+      </View>
+
+      <View style={styles.infoContainer}>
         <Text style={styles.label}>Power Save Mode:</Text>
         <Text style={styles.value}>
           {isPowerSave === null ? 'Loading...' : isPowerSave ? 'On' : 'Off'}
@@ -155,6 +177,21 @@ export default function App() {
         <Button
           title={wakeLockHeld ? 'Release Wake Lock' : 'Acquire Wake Lock'}
           onPress={wakeLockHeld ? handleReleaseWakeLock : handleAcquireWakeLock}
+        />
+      </View>
+
+      <View style={styles.buttonContainer}>
+        <Button
+          title={
+            isScreenWakeLockEnabled
+              ? 'Disable Screen Wake'
+              : 'Enable Screen Wake'
+          }
+          onPress={
+            isScreenWakeLockEnabled
+              ? handleDisableScreenWakeLock
+              : handleEnableScreenWakeLock
+          }
         />
       </View>
 

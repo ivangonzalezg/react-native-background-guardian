@@ -12,6 +12,7 @@ A cross-platform React Native library that prevents Android from killing backgro
 ## Features
 
 - **Wake Lock Management** - Keep CPU running during background tasks
+- **Screen Wake Lock** - Keep the screen on while the app is in the foreground
 - **Battery Optimization Exemption** - Request Doze mode whitelist
 - **Power Save Mode Detection** - Detect and manage Battery Saver mode
 - **OEM-Specific Settings** - Navigate to manufacturer battery settings (Xiaomi,
@@ -97,6 +98,37 @@ if (!isHeld) {
 | -------- | -------------------------------------------- |
 | Android  | Returns `true` if wake lock is actively held |
 | iOS      | No-op, returns `false`                       |
+
+### `enableScreenWakeLock(): Promise<boolean>`
+
+Keeps the screen on while the app is in the foreground.
+
+```typescript
+const enabled = await BackgroundGuardian.enableScreenWakeLock();
+console.log("Keep screen on:", enabled);
+```
+
+| Platform | Behavior                                           |
+| -------- | -------------------------------------------------- |
+| Android  | Adds `FLAG_KEEP_SCREEN_ON` to the current activity |
+| iOS      | Disables the idle timer (screen will stay on)      |
+
+> **Note**: This only affects the foreground UI. It does **not** keep the CPU
+> running in the background — use `acquireWakeLock()` for background execution.
+> Remember to call `disableScreenWakeLock()` when you no longer need the screen on.
+
+### `disableScreenWakeLock(): Promise<boolean>`
+
+Allows the screen to turn off normally.
+
+```typescript
+await BackgroundGuardian.disableScreenWakeLock();
+```
+
+| Platform | Behavior                                           |
+| -------- | -------------------------------------------------- |
+| Android  | Clears `FLAG_KEEP_SCREEN_ON` from the activity     |
+| iOS      | Re-enables the idle timer (normal screen timeout)  |
 
 ### `isIgnoringBatteryOptimizations(): Promise<boolean>`
 
@@ -295,6 +327,21 @@ async function stopAudioPlayback() {
 
   // Release wake lock
   await BackgroundGuardian.releaseWakeLock();
+}
+```
+
+### Foreground Kiosk / Always-On Screen
+
+```typescript
+import BackgroundGuardian from "react-native-background-guardian";
+
+async function enterKioskMode() {
+  // Keep the screen on while the app is in the foreground
+  await BackgroundGuardian.enableScreenWakeLock();
+}
+
+async function exitKioskMode() {
+  await BackgroundGuardian.disableScreenWakeLock();
 }
 ```
 

@@ -5,6 +5,8 @@ jest.mock('../NativeBackgroundGuardian', () => ({
     acquireWakeLock: jest.fn(),
     releaseWakeLock: jest.fn(),
     isWakeLockHeld: jest.fn(),
+    enableScreenWakeLock: jest.fn(),
+    disableScreenWakeLock: jest.fn(),
     isIgnoringBatteryOptimizations: jest.fn(),
     requestBatteryOptimizationExemption: jest.fn(),
     isPowerSaveMode: jest.fn(),
@@ -22,6 +24,8 @@ import BackgroundGuardian, {
   acquireWakeLock,
   releaseWakeLock,
   isWakeLockHeld,
+  enableScreenWakeLock,
+  disableScreenWakeLock,
   isIgnoringBatteryOptimizations,
   requestBatteryOptimizationExemption,
   isPowerSaveMode,
@@ -56,6 +60,8 @@ describe('BackgroundGuardian', () => {
       expect(BackgroundGuardian.acquireWakeLock).toBeDefined();
       expect(BackgroundGuardian.releaseWakeLock).toBeDefined();
       expect(BackgroundGuardian.isWakeLockHeld).toBeDefined();
+      expect(BackgroundGuardian.enableScreenWakeLock).toBeDefined();
+      expect(BackgroundGuardian.disableScreenWakeLock).toBeDefined();
       expect(BackgroundGuardian.isIgnoringBatteryOptimizations).toBeDefined();
       expect(
         BackgroundGuardian.requestBatteryOptimizationExemption
@@ -70,6 +76,8 @@ describe('BackgroundGuardian', () => {
       expect(acquireWakeLock).toBeDefined();
       expect(releaseWakeLock).toBeDefined();
       expect(isWakeLockHeld).toBeDefined();
+      expect(enableScreenWakeLock).toBeDefined();
+      expect(disableScreenWakeLock).toBeDefined();
       expect(isIgnoringBatteryOptimizations).toBeDefined();
       expect(requestBatteryOptimizationExemption).toBeDefined();
       expect(isPowerSaveMode).toBeDefined();
@@ -82,6 +90,12 @@ describe('BackgroundGuardian', () => {
       expect(BackgroundGuardian.acquireWakeLock).toBe(acquireWakeLock);
       expect(BackgroundGuardian.releaseWakeLock).toBe(releaseWakeLock);
       expect(BackgroundGuardian.isWakeLockHeld).toBe(isWakeLockHeld);
+      expect(BackgroundGuardian.enableScreenWakeLock).toBe(
+        enableScreenWakeLock
+      );
+      expect(BackgroundGuardian.disableScreenWakeLock).toBe(
+        disableScreenWakeLock
+      );
       expect(BackgroundGuardian.isIgnoringBatteryOptimizations).toBe(
         isIgnoringBatteryOptimizations
       );
@@ -217,6 +231,64 @@ describe('BackgroundGuardian', () => {
       );
 
       await expect(releaseWakeLock()).rejects.toThrow('Release failed');
+    });
+  });
+
+  describe('enableScreenWakeLock', () => {
+    it('should call native module and return true on success', async () => {
+      mockNativeModule.enableScreenWakeLock.mockResolvedValue(true);
+
+      const result = await enableScreenWakeLock();
+
+      expect(mockNativeModule.enableScreenWakeLock).toHaveBeenCalled();
+      expect(result).toBe(true);
+    });
+
+    it('should return false when enable fails', async () => {
+      mockNativeModule.enableScreenWakeLock.mockResolvedValue(false);
+
+      const result = await enableScreenWakeLock();
+
+      expect(result).toBe(false);
+    });
+
+    it('should handle native module rejection', async () => {
+      mockNativeModule.enableScreenWakeLock.mockRejectedValue(
+        new Error('Enable screen wake lock failed')
+      );
+
+      await expect(enableScreenWakeLock()).rejects.toThrow(
+        'Enable screen wake lock failed'
+      );
+    });
+  });
+
+  describe('disableScreenWakeLock', () => {
+    it('should call native module and return true on success', async () => {
+      mockNativeModule.disableScreenWakeLock.mockResolvedValue(true);
+
+      const result = await disableScreenWakeLock();
+
+      expect(mockNativeModule.disableScreenWakeLock).toHaveBeenCalled();
+      expect(result).toBe(true);
+    });
+
+    it('should return false when disable fails', async () => {
+      mockNativeModule.disableScreenWakeLock.mockResolvedValue(false);
+
+      const result = await disableScreenWakeLock();
+
+      expect(result).toBe(false);
+    });
+
+    it('should handle native module rejection', async () => {
+      mockNativeModule.disableScreenWakeLock.mockRejectedValue(
+        new Error('Disable screen wake lock failed')
+      );
+
+      await expect(disableScreenWakeLock()).rejects.toThrow(
+        'Disable screen wake lock failed'
+      );
     });
   });
 

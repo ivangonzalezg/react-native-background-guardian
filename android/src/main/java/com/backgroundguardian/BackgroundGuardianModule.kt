@@ -9,8 +9,10 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
+import android.view.WindowManager
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.UiThreadUtil
 import com.facebook.react.module.annotations.ReactModule
 import androidx.core.net.toUri
 
@@ -146,6 +148,64 @@ class BackgroundGuardianModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  // ==================== Screen Wake Lock Methods ====================
+
+  /**
+   * Enables a screen wake lock to keep the display on while the app is in the foreground.
+   *
+   * On Android, this adds FLAG_KEEP_SCREEN_ON to the current Activity window.
+   * This does not keep the CPU running in the background. Use acquireWakeLock()
+   * for background execution.
+   *
+   * @param promise Resolves to true if enabled successfully, false otherwise
+   */
+  override fun enableScreenWakeLock(promise: Promise) {
+    val activity = currentActivity
+    if (activity == null) {
+      Log.w(TAG, "No current activity to enable screen wake lock")
+      promise.resolve(false)
+      return
+    }
+
+    UiThreadUtil.runOnUiThread {
+      try {
+        activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        Log.d(TAG, "Screen wake lock enabled")
+        promise.resolve(true)
+      } catch (e: Exception) {
+        Log.e(TAG, "Failed to enable screen wake lock", e)
+        promise.resolve(false)
+      }
+    }
+  }
+
+  /**
+   * Disables the screen wake lock, allowing the display to turn off normally.
+   *
+   * On Android, this clears FLAG_KEEP_SCREEN_ON on the current Activity window.
+   *
+   * @param promise Resolves to true if disabled successfully, false otherwise
+   */
+  override fun disableScreenWakeLock(promise: Promise) {
+    val activity = currentActivity
+    if (activity == null) {
+      Log.w(TAG, "No current activity to disable screen wake lock")
+      promise.resolve(false)
+      return
+    }
+
+    UiThreadUtil.runOnUiThread {
+      try {
+        activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        Log.d(TAG, "Screen wake lock disabled")
+        promise.resolve(true)
+      } catch (e: Exception) {
+        Log.e(TAG, "Failed to disable screen wake lock", e)
+        promise.resolve(false)
+      }
+    }
+  }
+
   // ==================== Battery Optimization Methods ====================
 
   /**
@@ -249,7 +309,6 @@ class BackgroundGuardianModule(reactContext: ReactApplicationContext) :
       promise.resolve(false)
     }
   }
-
 
 
   /**
