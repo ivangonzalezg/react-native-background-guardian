@@ -6,6 +6,7 @@
 ![actions](https://img.shields.io/github/actions/workflow/status/ivangonzalezg/react-native-background-guardian/ci.yml)
 ![downloads](https://img.shields.io/npm/dw/react-native-background-guardian)
 ![size](https://img.shields.io/npm/unpacked-size/react-native-background-guardian)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ivangonzalezg/react-native-background-guardian)
 
 A cross-platform React Native library that prevents Android from killing background processes through Wake Locks, battery optimization exemptions, and OEM-specific protections. iOS-safe with no-op implementation.
 

@@ -54,7 +54,7 @@
   "bugs": {
     "url": "https://github.com/ivangonzalezg/react-native-background-guardian/issues"
   },
-  "homepage": "https://github.com/ivangonzalezg/react-native-background-guardian#readme",
+  "homepage": "https://ivangonzalezg-react-native-background-guardian.mintlify.app",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
